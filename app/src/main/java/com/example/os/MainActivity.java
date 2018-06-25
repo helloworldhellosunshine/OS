@@ -313,7 +313,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    // 创建原语
+    // 创建PCB
     private void create(String IR) {
         // 创建进程控制块，并初始化
         PCB pcb = new PCB();
@@ -335,7 +335,7 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    // 终止原语
+    // 撤销PCB
     private void distroy() {
         // 将正在运行标志更新
         isRunning = false;
@@ -345,7 +345,7 @@ public class MainActivity extends AppCompatActivity {
         id--;
     }
 
-    // 阻塞原语
+    // 阻塞PCB
     private void block() {
         // 更改运行中的PCB状态
         runningProcess.PSW = PCB.STATUS_BLOCK;
@@ -369,7 +369,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    // 唤醒原语
+    // 唤醒PCB
     private void wakeup(int i) {
         // 从阻塞队列中移除一个进程
         PCB pcb = blockQueue.get(i);
