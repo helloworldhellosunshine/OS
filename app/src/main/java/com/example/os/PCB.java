@@ -11,7 +11,6 @@ public class PCB {
     public int id; // 进程标识符
     public int time;   // 阻塞时间
     public int variables;  // 中间变量
-
     //寄存器的模拟
     public String IR;    // IR寄存器  存储指令
     public int PSW;    // 程序状态寄存器

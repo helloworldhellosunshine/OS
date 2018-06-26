@@ -4,6 +4,7 @@ package com.example.os;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -52,6 +53,7 @@ public class MainActivity extends AppCompatActivity {
     private BlockAdapter blockAdapter;
     private ResultsAdapter resultsAdapter;
 
+    private int  timefile=5;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -85,9 +87,12 @@ public class MainActivity extends AppCompatActivity {
 
         //对CPU运行状态进行检测
         detection();
+
         // cpu函数
         CPU();
+
     }
+
     //对CPU运行状态进行检测
     private void detection() {
         new Thread(){
@@ -96,7 +101,7 @@ public class MainActivity extends AppCompatActivity {
                 super.run();
                 try{
                     while (true){
-                        Thread.sleep(500);
+                        Thread.sleep(1000);
 
                         // 检查当前是否是空闲状态
                         checkIdle();
@@ -143,7 +148,6 @@ public class MainActivity extends AppCompatActivity {
                     if (!code[code.length - 1].equals("end")) {
                         runningProcess.IR = runningProcess.IR + ";end";
                         code = runningProcess.IR.split(";");
-//                        erroCode();
                     }
 
                     // 更新界面
@@ -202,12 +206,11 @@ public class MainActivity extends AppCompatActivity {
                 super.run();
                 try {
                     while (true) {
-                        // 每隔0.5秒执行一次
-                        Thread.sleep(500);
+                        // 每隔1秒执行一次
+                        Thread.sleep(1000);
 
                         // 解析运行进程代码
                         runningCode();
-
                     }
                 } catch (InterruptedException e) {
                     e.printStackTrace();
@@ -219,74 +222,89 @@ public class MainActivity extends AppCompatActivity {
                 // 当前正在执行程序  进行代码的解析操作
                 if (runningProcess != null && runningProcess.PC < code.length) {
                     // 解析代码
-                    exeCode(code[runningProcess.PC]);
+                    exeCode(code[runningProcess.PC],5);
                     // 更新界面
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
                             if (runningProcess != null && runningProcess.PC < code.length) {
+                                //显示正在运行的指令
                                 tv_running_code.setText(code[runningProcess.PC]);
+                                //显示执行的中间结果
                                 tv_running_results.setText(code[0].charAt(0) + "=" + runningProcess.variables);
                             }
                         }
                     });
                 }
             }
+
             // 解析代码
-            private void exeCode(String s) {
-                // 结束语句
-                if (s.equals("end")) {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            // 将结果添加到结果队列里
-                            resultsQueue.add(runningProcess);
-                            resultsAdapter.notifyDataSetChanged();
-                            // 更新界面
-                            tv_running_process.setText("");
-                            tv_running_code.setText("");
-                            tv_running_results.setText("");
-                            // 销毁原语
-                            distroy();
-                        }
-                    });
-                    // 阻塞语句
-                } else if (s.length() > 0 && s.charAt(0) == '!') {
-                    // 给PCB的阻塞时间赋值
-                    runningProcess.time = Integer.valueOf(s.substring(1));
-                    // 阻塞原语
-                    block();
-                } else {
-                    int st = -1;
-                    if (s.contains("=")) {
-                        st = 0;
-                    } else if (s.contains("++")) {
-                        st = 1;
-                    } else if (s.contains("--")) {
-                        st = 2;
-                    }
-                    switch (st) {
-                        case 0:
-                            try {
-                                runningProcess.variables = Integer.valueOf(s.substring(s.indexOf("=") + 1));
-                            } catch (NumberFormatException e) {
-                                erroCode();
+            private void exeCode(String s,int a) {
+                //时间片轮转调度算法
+                timefile--;
+                Log.d("dada1", String.valueOf(timefile));
+                if (timefile%5==0){
+                    //因时间片轮转而加入就绪队列末尾
+                   BeReady();
+                   timefile=5;
+                   Log.d("dada", String.valueOf(timefile));
+                }else {
+                    if(s.equals("end")) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                // 将结果添加到结果队列里
+                                resultsQueue.add(runningProcess);
+                                resultsAdapter.notifyDataSetChanged();
+                                // 更新界面
+                                tv_running_process.setText("");
+                                tv_running_code.setText("");
+                                tv_running_results.setText("");
+                                // 销毁原语
+                                distroy();
+                                timefile=5;
                             }
-                            break;
-                        case 1:
-                            runningProcess.variables = runningProcess.variables + 1;
-                            break;
-                        case 2:
-                            runningProcess.variables = runningProcess.variables - 1;
-                            break;
-                        // 在输入非法语句时执行
-                        default:
-                            erroCode();
+                        });
+                        // 阻塞语句
+                    } else if (s.length() > 0 && s.charAt(0) == '!') {
+                        // 给PCB的阻塞时间赋值
+                        runningProcess.time = Integer.valueOf(s.substring(1));
+                        // 阻塞原语
+                        block();
+                        timefile=5;
+                    } else {
+                        int st = -1;
+                        if (s.contains("=")) {
+                            st = 0;
+                        } else if (s.contains("++")) {
+                            st = 1;
+                        } else if (s.contains("--")) {
+                            st = 2;
+                        }
+
+                        switch (st) {
+                            case 0:
+                                try {
+                                    runningProcess.variables = Integer.valueOf(s.substring(s.indexOf("=") + 1));
+                                } catch (NumberFormatException e) {
+                                    erroCode();
+                                }
+                                break;
+                            case 1:
+                                runningProcess.variables = runningProcess.variables + 1;
+                                break;
+                            case 2:
+                                runningProcess.variables = runningProcess.variables - 1;
+                                break;
+                            // 在输入非法语句时执行
+                            default:
+                                erroCode();
+                        }
                     }
-                }
-                // 更新PC程序指针 下次取下一条指令
-                if (runningProcess != null) {
-                    runningProcess.PC++;
+                    // 更新PC程序指针 下次取下一条指令
+                    if (runningProcess != null) {
+                        runningProcess.PC++;
+                    }
                 }
             }
 
@@ -314,7 +332,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // 创建PCB
-    private void create(String IR) {
+    private void create(String IR, int i) {
         // 创建进程控制块，并初始化
         PCB pcb = new PCB();
         pcb.id = id;
@@ -332,6 +350,7 @@ public class MainActivity extends AppCompatActivity {
 
         // 进程数加一
         id++;
+
 
     }
 
@@ -368,7 +387,6 @@ public class MainActivity extends AppCompatActivity {
         runningProcess = null;
     }
 
-
     // 唤醒PCB
     private void wakeup(int i) {
         // 从阻塞队列中移除一个进程
@@ -384,6 +402,26 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
                 blockAdapter.notifyDataSetChanged();
+                readyAdapter.notifyDataSetChanged();
+            }
+        });
+    }
+
+    //因时间片轮转而加入就绪队列末尾
+    private void BeReady(){
+        runningProcess.PSW=PCB.STATUS_EXECUTE;
+        //将其添加到就绪队列
+        readyQueue.add(runningProcess);
+
+        // 将正在运行标志更新
+        isRunning = false;
+        // 释放资源
+        runningProcess = null;
+
+        //更新页面
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
                 readyAdapter.notifyDataSetChanged();
             }
         });
@@ -419,7 +457,7 @@ public class MainActivity extends AppCompatActivity {
                 String IR = et_input.getText().toString().trim();
                 if (!TextUtils.isEmpty(IR)) {
                     if (id <= 10) {
-                        create(IR);
+                        create(IR,5);
                     } else {
                         Toast.makeText(MainActivity.this, "内存已满", Toast.LENGTH_SHORT).show();
                     }
